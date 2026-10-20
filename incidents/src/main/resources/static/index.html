@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guardia</title>
+<style>
+  :root {
+    --bg: #fbfaf8;
+    --panel: #ffffff;
+    --line: #e4e0d8;
+    --ink: #1e1c19;
+    --muted: #6f6a62;
+    --accent: #2f6f4f;
+    --held: #8a6d1f;
+    --cancelled: #96402f;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #171614;
+      --panel: #201e1b;
+      --line: #35312c;
+      --ink: #efece6;
+      --muted: #a09a90;
+      --accent: #6dbd92;
+      --held: #d8b65c;
+      --cancelled: #e08a74;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { margin-bottom: 28px; }
+  h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .lede { color: var(--muted); margin: 0; max-width: 62ch; }
+  .live {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-top: 14px; font-size: 13px; color: var(--muted);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.on { background: var(--accent); }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px;
+  }
+  .panel + .panel { margin-top: 18px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 14px; }
+
+  .quick { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  button {
+    font: inherit; cursor: pointer; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    padding: 9px 14px;
+  }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .hint { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+
+  form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  input, select {
+    font: inherit; width: 100%; padding: 9px 10px; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .wide { grid-column: 1 / -1; }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { border-top: 1px solid var(--line); padding: 14px 0; }
+  li:first-child { border-top: 0; }
+  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .summary { font-weight: 550; }
+  .meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .detail { font-size: 13.5px; margin-top: 6px; }
+  .chip {
+    font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase;
+    border: 1px solid currentColor; border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+  }
+  .RECEIVED { color: var(--muted); }
+  .SLOT_HELD { color: var(--held); }
+  .ASSIGNED { color: var(--accent); }
+  .CANCELLED { color: var(--cancelled); }
+  .empty { color: var(--muted); font-size: 14px; }
+  .flash { animation: flash 1.1s ease-out; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--accent) 16%, transparent); } to { background: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Guardia</h1>
+    <p class="lede">
+      Raise an incident and watch three services settle it between them: an hour of a
+      technician's day is held, the customer's contracted response time is checked, and the
+      appointment is either confirmed or the hour is handed straight back.
+    </p>
+    <span class="live"><span class="dot" id="dot"></span><span id="liveLabel">connecting…</span></span>
+  </header>
+
+  <section class="panel">
+    <h2>Raise one</h2>
+    <p class="hint">
+      Two contracts are seeded, and they are what decides the outcome: <strong>acme</strong> is
+      promised 24 hours at normal priority, <strong>globex</strong> 15 minutes at critical —
+      which no free hour can meet, so that saga has to undo itself.
+    </p>
+    <div class="quick">
+      <button class="primary" data-preset="acme|NORMAL|NETWORK|Branch office offline">Gets assigned</button>
+      <button data-preset="globex|CRITICAL|NETWORK|Core switch down">Gets cancelled, hour released</button>
+      <button data-preset="acme|NORMAL|QUANTUM|Needs a skill nobody has">No technician has the skill</button>
+    </div>
+    <form id="form">
+      <div>
+        <label for="customerId">Customer</label>
+        <select id="customerId">
+          <option value="acme">acme — 24 h at normal</option>
+          <option value="globex">globex — 15 min at critical</option>
+          <option value="initech">initech — no contract</option>
+        </select>
+      </div>
+      <div>
+        <label for="priority">Priority</label>
+        <select id="priority">
+          <option>NORMAL</option>
+          <option>HIGH</option>
+          <option>CRITICAL</option>
+        </select>
+      </div>
+      <div>
+        <label for="requiredSkill">Skill needed</label>
+        <select id="requiredSkill">
+          <option>NETWORK</option>
+          <option>DATABASE</option>
+          <option>HARDWARE</option>
+          <option value="QUANTUM">QUANTUM — nobody has it</option>
+        </select>
+      </div>
+      <div class="wide">
+        <label for="summary">What is wrong</label>
+        <input id="summary" maxlength="280" value="Branch office offline" required>
+      </div>
+      <div>
+        <button type="submit" id="submit">Raise incident</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Incidents</h2>
+    <ul id="list"><li class="empty">Nothing yet.</li></ul>
+  </section>
+</div>
+
+<script>
+  const list = document.getElementById("list");
+  const dot = document.getElementById("dot");
+  const liveLabel = document.getElementById("liveLabel");
+  const form = document.getElementById("form");
+  const submit = document.getElementById("submit");
+
+  // Newest first, keyed by id: an incident arrives once from the initial load and then again
+  // on every state change, and both paths render through the same map.
+  const incidents = new Map();
+
+  const chips = {
+    RECEIVED: "received",
+    SLOT_HELD: "hour held",
+    ASSIGNED: "assigned",
+    CANCELLED: "cancelled"
+  };
+
+  function hour(iso) {
+    if (!iso) return null;
+    return new Date(iso).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function render(changedId) {
+    const rows = [...incidents.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (rows.length === 0) {
+      list.innerHTML = '<li class="empty">Nothing yet.</li>';
+      return;
+    }
+    list.innerHTML = rows.map(incident => {
+      const when = hour(incident.scheduledStart);
+      const parts = [incident.customerId, incident.priority.toLowerCase(), incident.requiredSkill.toLowerCase()];
+      if (when) parts.push("slot " + when);
+      return `<li class="${incident.id === changedId ? "flash" : ""}">
+          <div class="row">
+            <span class="summary"></span>
+            <span class="chip ${incident.status}">${chips[incident.status] || incident.status}</span>
+          </div>
+          <div class="meta">${parts.join(" · ")}</div>
+          <div class="detail"></div>
+        </li>`;
+    }).join("");
+
+    // Text set through the DOM rather than interpolated, so a summary cannot inject markup.
+    rows.forEach((incident, index) => {
+      const item = list.children[index];
+      item.querySelector(".summary").textContent = incident.summary;
+      item.querySelector(".detail").textContent = incident.detail || "";
+    });
+  }
+
+  function put(incident, flash) {
+    incidents.set(incident.id, incident);
+    render(flash ? incident.id : null);
+  }
+
+  async function load() {
+    const response = await fetch("/api/incidents");
+    const rows = await response.json();
+    rows.forEach(incident => incidents.set(incident.id, incident));
+    render(null);
+  }
+
+  function listen() {
+    const stream = new EventSource("/api/incidents/stream");
+    stream.addEventListener("open", () => {
+      dot.classList.add("on");
+      liveLabel.textContent = "live";
+    });
+    stream.addEventListener("incident", event => put(JSON.parse(event.data), true));
+    stream.addEventListener("error", () => {
+      dot.classList.remove("on");
+      liveLabel.textContent = "reconnecting…";
+      // EventSource retries by itself; the list is reloaded on the next open so nothing
+      // that happened while the tab was disconnected is missed.
+      stream.addEventListener("open", load, { once: true });
+    });
+  }
+
+  async function raise(body) {
+    submit.disabled = true;
+    try {
+      const response = await fetch("/api/incidents", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        alert("The service refused that: " + response.status);
+        return;
+      }
+      // 202 Accepted: a saga has started. The rest arrives over the stream.
+      put(await response.json(), true);
+    } finally {
+      submit.disabled = false;
+    }
+  }
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    raise({
+      customerId: customerId.value,
+      priority: priority.value,
+      requiredSkill: requiredSkill.value,
+      summary: summary.value
+    });
+  });
+
+  document.querySelectorAll("[data-preset]").forEach(button => {
+    button.addEventListener("click", () => {
+      const [customer, prio, skill, text] = button.dataset.preset.split("|");
+      customerId.value = customer;
+      priority.value = prio;
+      requiredSkill.value = skill;
+      summary.value = text;
+      raise({ customerId: customer, priority: prio, requiredSkill: skill, summary: text });
+    });
+  });
+
+  load().then(listen);
+</script>
+</body>
+</html>

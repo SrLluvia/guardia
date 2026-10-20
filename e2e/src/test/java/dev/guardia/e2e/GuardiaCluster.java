@@ -3,11 +3,11 @@ package dev.guardia.e2e;
 import dev.guardia.incidents.IncidentsApplication;
 import dev.guardia.scheduling.SchedulingApplication;
 import dev.guardia.sla.SlaApplication;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.testcontainers.kafka.KafkaContainer;
+import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
@@ -22,7 +22,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 final class GuardiaCluster {
 
 	static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17");
-	static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.0");
+	static final ConfluentKafkaContainer KAFKA = new ConfluentKafkaContainer("confluentinc/cp-kafka:7.8.0");
 
 	private static ConfigurableApplicationContext incidents;
 	private static ConfigurableApplicationContext scheduling;
@@ -74,7 +74,7 @@ final class GuardiaCluster {
 	}
 
 	private static ConfigurableApplicationContext run(Class<?> application, String name, Map<String, String> extra) {
-		Map<String, Object> properties = new HashMap<>();
+		Map<String, Object> properties = new LinkedHashMap<>();
 		properties.put("spring.application.name", name);
 		properties.put("server.port", 0);
 
@@ -84,6 +84,7 @@ final class GuardiaCluster {
 		properties.put("spring.jpa.properties.hibernate.default_schema", name);
 		properties.put("spring.jpa.hibernate.ddl-auto", "validate");
 		properties.put("spring.jpa.open-in-view", false);
+		properties.put("spring.flyway.locations", "classpath:db/migration/" + name);
 		properties.put("spring.flyway.schemas", name);
 		properties.put("spring.flyway.default-schema", name);
 
@@ -102,8 +103,13 @@ final class GuardiaCluster {
 		properties.put("guardia.outbox.poll-interval", "200");
 		properties.putAll(extra);
 
-		return new SpringApplicationBuilder(application)
-				.properties(properties)
-				.run();
+		// Passed as command line arguments rather than through properties(), which lands in
+		// Spring's default properties and therefore loses to any application.yml on the
+		// classpath — and with three services there, one of those files always wins.
+		String[] arguments = properties.entrySet().stream()
+				.map(entry -> "--" + entry.getKey() + "=" + entry.getValue())
+				.toArray(String[]::new);
+
+		return new SpringApplicationBuilder(application).run(arguments);
 	}
 }

@@ -9,8 +9,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +42,12 @@ public class SlotHorizon {
 		this.leadTime = leadTime;
 	}
 
-	@EventListener(ApplicationReadyEvent.class)
+	/**
+	 * A fixed delay fires once at startup and then on its interval, which is exactly the
+	 * schedule wanted here. Adding an ApplicationReadyEvent listener as well ran this twice
+	 * at once, and two runs that both saw an empty diary each filled it — the duplicate hours
+	 * that {@code slot_one_per_technician_hour} now also makes impossible.
+	 */
 	@Scheduled(fixedDelayString = "${guardia.agenda.top-up-interval:600000}")
 	@Transactional
 	public void topUp() {

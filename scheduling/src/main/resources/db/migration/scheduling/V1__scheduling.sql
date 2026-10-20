@@ -23,6 +23,9 @@ CREATE TABLE slot (
     )
 );
 
+-- A technician has one of each hour, whatever a top-up run believes.
+CREATE UNIQUE INDEX slot_one_per_technician_hour ON slot (technician_id, starts_at);
+
 -- One slot per incident at most, enforced by the database rather than by hoping.
 CREATE UNIQUE INDEX idx_slot_one_per_incident ON slot (incident_id) WHERE incident_id IS NOT NULL;
 CREATE INDEX idx_slot_free_by_time ON slot (starts_at) WHERE status = 'FREE';

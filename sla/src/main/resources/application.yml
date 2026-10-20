@@ -16,6 +16,9 @@ spring:
       hibernate:
         default_schema: sla
   flyway:
+    # Namespaced per service: all three sets of migrations share one classpath in the
+    # end-to-end suite, and a bare db/migration would make three V1 files collide.
+    locations: classpath:db/migration/sla
     schemas: sla
     default-schema: sla
   kafka:
