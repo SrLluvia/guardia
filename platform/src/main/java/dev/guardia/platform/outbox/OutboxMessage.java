@@ -34,7 +34,8 @@ public class OutboxMessage {
 	@Column(name = "event_type", nullable = false, updatable = false)
 	private String eventType;
 
-	@Column(name = "payload", nullable = false, updatable = false, columnDefinition = "jsonb")
+	/** The event as JSON text. Stored, not interpreted: nothing here reads inside it. */
+	@Column(name = "payload", nullable = false, updatable = false)
 	private String payload;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -73,6 +74,10 @@ public class OutboxMessage {
 
 	public String payload() {
 		return payload;
+	}
+
+	public Instant createdAt() {
+		return createdAt;
 	}
 
 	public Instant publishedAt() {
