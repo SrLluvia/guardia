@@ -45,8 +45,13 @@ class SagaEndToEndTest {
 		await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
 				assertThat(status(incidentId)).isEqualTo("ASSIGNED"));
 
-		Slot slot = slotFor(incidentId);
-		assertThat(slot.status()).as("the hour must end up booked, not merely held").isEqualTo(SlotStatus.BOOKED);
+		// The incident reaching ASSIGNED only means its own service has concluded. Scheduling
+		// learns of that conclusion over Kafka, so the booking is awaited rather than assumed:
+		// asserting it immediately would be testing this JVM's timing, not the system.
+		await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
+				assertThat(slotFor(incidentId).status())
+						.as("the hour must end up booked, not merely held")
+						.isEqualTo(SlotStatus.BOOKED));
 		assertThat(detail(incidentId)).contains("within the contracted response time");
 	}
 
@@ -87,10 +92,14 @@ class SagaEndToEndTest {
 			assertThat(status(first)).isEqualTo("ASSIGNED");
 			assertThat(status(second)).isEqualTo("ASSIGNED");
 		});
+		await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
+			assertThat(slotFor(first).status()).isEqualTo(SlotStatus.BOOKED);
+			assertThat(slotFor(second).status()).isEqualTo(SlotStatus.BOOKED);
+		});
 
 		Slot a = slotFor(first);
 		Slot b = slotFor(second);
-		assertThat(a.id()).isNotEqualTo(b.id());
+		assertThat(a.id()).as("two incidents must not be handed the same hour").isNotEqualTo(b.id());
 		assertThat(a.startsAt()).isNotEqualTo(b.startsAt());
 	}
 

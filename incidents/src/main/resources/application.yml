@@ -16,6 +16,9 @@ spring:
       hibernate:
         default_schema: incidents
   flyway:
+    # Namespaced per service: all three sets of migrations share one classpath in the
+    # end-to-end suite, and a bare db/migration would make three V1 files collide.
+    locations: classpath:db/migration/incidents
     schemas: incidents
     default-schema: incidents
   kafka:
