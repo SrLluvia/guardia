@@ -32,13 +32,16 @@ public class SlotHorizon {
 	private final SlotRepository slots;
 	private final Clock clock;
 	private final int horizonHours;
+	private final Duration leadTime;
 
 	public SlotHorizon(TechnicianRepository technicians, SlotRepository slots, Clock clock,
-			@Value("${guardia.agenda.horizon-hours:8}") int horizonHours) {
+			@Value("${guardia.agenda.horizon-hours:8}") int horizonHours,
+			@Value("${guardia.agenda.lead-time:PT0S}") Duration leadTime) {
 		this.technicians = technicians;
 		this.slots = slots;
 		this.clock = clock;
 		this.horizonHours = horizonHours;
+		this.leadTime = leadTime;
 	}
 
 	@EventListener(ApplicationReadyEvent.class)
@@ -46,7 +49,10 @@ public class SlotHorizon {
 	@Transactional
 	public void topUp() {
 		Instant now = Instant.now(clock);
-		Instant nextHour = now.truncatedTo(ChronoUnit.HOURS).plus(SLOT_LENGTH);
+		// The first hour on offer. A lead time pushes it further out, which is how the
+		// end-to-end suite gets a diary that is predictably too late for a tight contract
+		// instead of one that depends on what time the build happens to run.
+		Instant nextHour = now.plus(leadTime).truncatedTo(ChronoUnit.HOURS).plus(SLOT_LENGTH);
 		int created = 0;
 
 		for (Technician technician : technicians.findAll()) {
