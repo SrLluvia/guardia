@@ -30,7 +30,8 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
 			""")
 	List<Slot> findExpiredHolds(@Param("now") Instant now, Limit limit);
 
-	long countByTechnicianAndStartsAtAfter(Technician technician, Instant after);
+	/** Free hours still to come. Held and booked ones do not count: they are spoken for. */
+	long countByTechnicianAndStatusAndStartsAtAfter(Technician technician, SlotStatus status, Instant after);
 
 	Optional<Slot> findTopByTechnicianOrderByStartsAtDesc(Technician technician);
 }
