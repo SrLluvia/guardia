@@ -8,6 +8,10 @@ spans them.
 > The saga runs end to end — holding, confirming, compensating and timing out — and every
 > claim below is held up by a test that forces the failure rather than describing it.
 
+This file is about how it is built and why. For what it does — the rules it applies, the
+technicians and contracts it is seeded with, and a list of things to try in the page with what
+each one should do — see [docs/FUNCTIONAL.md](docs/FUNCTIONAL.md).
+
 ## The problem worth solving
 
 The business rule is three sentences long. The hard part is that the three steps live in three
@@ -120,6 +124,8 @@ docker compose up --wait
 ```
 
 Then open <http://localhost:8081>, which has a button for each ending.
+[docs/FUNCTIONAL.md](docs/FUNCTIONAL.md) lists what to click and what should happen, down to
+the incident that is cancelled and the one that then takes the hour it was holding.
 
 For working on it, run the infrastructure in Docker and the services from source instead —
 Kafka advertises a second address for exactly this, so a service on the host and a service in
