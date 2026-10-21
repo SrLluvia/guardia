@@ -187,6 +187,17 @@ version of the same outcome.
 `SELECT ... FOR UPDATE SKIP LOCKED`, which gives at-most-one-publisher-per-row without adding
 anything else to operate.
 
+**Scheduling exposes one read-only endpoint, and nothing else.** The service needs no HTTP to
+do its work — it listens and it answers over Kafka — but the page has to be able to show the
+diary, because an incident's text can claim an hour was handed back while only the hour itself
+can show it. `GET /api/slots` is that endpoint. There is deliberately no way to take or release
+an hour over HTTP: the saga does that, or nobody does.
+
+Reaching it from the page is a cross-origin request, since the page is served by a different
+service on a different port. The permission granted is one named origin, one path and GET. A
+blanket `*` would be shorter and would also let any page anywhere read the diary, which is not
+a trade anyone makes on purpose.
+
 **The diary is filled at startup, not by a migration.** Timestamps written into a migration are
 wrong the next day, and an agenda whose hours are all in the past demonstrates nothing.
 

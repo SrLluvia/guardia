@@ -13,6 +13,8 @@ public record IncidentView(
 		String summary,
 		String status,
 		String detail,
+		UUID technicianId,
+		String technicianName,
 		Instant scheduledStart,
 		Instant createdAt) {
 
@@ -25,6 +27,8 @@ public record IncidentView(
 				incident.summary(),
 				incident.status().name(),
 				incident.resolutionDetail(),
+				incident.technicianId(),
+				incident.technicianName(),
 				incident.scheduledStart(),
 				incident.createdAt());
 	}
