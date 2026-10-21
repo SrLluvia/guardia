@@ -1,6 +1,6 @@
 # Where this stands
 
-Updated 2026-10-20.
+Updated 2026-10-21.
 
 ## Done, and verified locally with `./mvnw verify`
 
@@ -14,6 +14,9 @@ day is held, the SLA is checked, and the appointment is either booked or the hou
 - `sla` — contracts and response times; the step that can say no.
 - `e2e` — all three services in one JVM against a real Kafka and Postgres.
 - A single static page served by `incidents` on 8081, with a button per outcome.
+- `docker compose up --wait` builds all three services and starts the whole system, returning
+  once each one reports healthy. All three endings were exercised against that stack by hand,
+  not only in tests.
 
 Every claim in the README has a test behind it, including the two that were until recently only
 asserted in prose: a poison pill reaching the dead letter topic without stalling the partition
@@ -24,18 +27,14 @@ queueing behind it.
 
 ## Next
 
-1. Merge the pull request — but only after the history below has been pushed, or the trailer
-   ends up in `main` for good.
-2. The history has been rewritten locally to drop the `Co-Authored-By` trailer from the first
-   two commits. It needs two force pushes, which the permission mode in this setup blocks:
-
-   ```
-   git push --force origin feat/saga-foundation
-   git push --force origin $(git rev-list --max-parents=0 feat/saga-foundation):refs/heads/main
-   ```
-
-3. Worth having: Dockerfiles so each service is deployable on its own, an `/actuator/health`
-   check in `compose.yaml`, and rescheduling an incident whose first attempt was cancelled.
+1. Rescheduling an incident whose first attempt was cancelled. Today a cancellation is the end
+   of that saga, and a human has to raise another incident. Doing it properly means deciding
+   what a second attempt is allowed to do — try a later hour, a different technician, or
+   neither — and that is a design question rather than a coding one.
+2. Observability: the useful version is not a tracing library but an answer to "where did this
+   incident get to", which means correlating one incident's events across three services.
+3. Nothing here is authenticated. That is fine for what this repository is for, and it is the
+   first thing to say out loud if asked.
 
 ## Things learned the hard way, so they are not learned twice
 
@@ -54,3 +53,11 @@ queueing behind it.
   `ApplicationReadyEvent` listener ran the agenda top-up twice at once.
 - Keep the container singleton: `@Testcontainers` stops a static container after each test
   class, and the next class then finds a dead port.
+- `apache/kafka:3.9.0` refuses the two-listener arrangement this project needs, failing at
+  storage format time with a complaint about `0.0.0.0` in the advertised listeners, and it
+  would not start under Testcontainers either. `confluentinc/cp-kafka:7.8.0` takes it, and is
+  now what both the tests and `compose.yaml` use.
+- Port 5432 on the host belongs to whatever database is already running there, which on this
+  machine is another project's. Guardia publishes 55432 instead, and the services' default
+  connection string points at that, so starting a service from source cannot quietly talk to
+  the wrong database.

@@ -34,7 +34,7 @@ public class SlotHorizon {
 
 	public SlotHorizon(TechnicianRepository technicians, SlotRepository slots, Clock clock,
 			@Value("${guardia.agenda.horizon-hours:8}") int horizonHours,
-			@Value("${guardia.agenda.lead-time:PT0S}") Duration leadTime) {
+			@Value("${guardia.agenda.lead-time:PT1H}") Duration leadTime) {
 		this.technicians = technicians;
 		this.slots = slots;
 		this.clock = clock;
@@ -52,9 +52,11 @@ public class SlotHorizon {
 	@Transactional
 	public void topUp() {
 		Instant now = Instant.now(clock);
-		// The first hour on offer. A lead time pushes it further out, which is how the
-		// end-to-end suite gets a diary that is predictably too late for a tight contract
-		// instead of one that depends on what time the build happens to run.
+		// The first hour on offer. The default lead time of an hour is not decoration: with
+		// no lead time the earliest slot is the next hour, which at ten to the hour is ten
+		// minutes away and at five past is fifty-five — so whether a tight response time can
+		// be met would depend on what the clock happened to say. An hour of notice is also
+		// what a real field desk has.
 		Instant nextHour = now.plus(leadTime).truncatedTo(ChronoUnit.HOURS).plus(SLOT_LENGTH);
 		int created = 0;
 

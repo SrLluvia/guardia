@@ -112,24 +112,25 @@ each other. It reaches into no service to move one along.
 
 ## Running it
 
-Requires Docker and JDK 25.
+Requires Docker. One command builds the three services and starts them with Postgres and
+Kafka, and returns once they report healthy rather than merely started:
 
 ```bash
-docker compose up -d
+docker compose up --wait
 ```
 
-Then each service, in its own terminal:
+Then open <http://localhost:8081>, which has a button for each ending.
+
+For working on it, run the infrastructure in Docker and the services from source instead —
+Kafka advertises a second address for exactly this, so a service on the host and a service in
+the network reach the same broker:
+
+```bash
+docker compose up -d postgres kafka
+```
 
 ```bash
 ./mvnw -pl incidents spring-boot:run
-```
-
-```bash
-./mvnw -pl scheduling spring-boot:run
-```
-
-```bash
-./mvnw -pl sla spring-boot:run
 ```
 
 `incidents` serves the API on 8081, `scheduling` on 8082 and `sla` on 8083. Raise an incident —

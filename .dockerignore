@@ -1,0 +1,9 @@
+# The build inside the image compiles from source; anything already built here would only be
+# stale, and target/ is large enough to slow every build down.
+target/
+*/target/
+.git/
+.github/
+.idea/
+docs/
+README.md
