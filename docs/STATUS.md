@@ -15,13 +15,12 @@ day is held, the SLA is checked, and the appointment is either booked or the hou
 - `e2e` — all three services in one JVM against a real Kafka and Postgres.
 - A single static page served by `incidents` on 8081, with a button per outcome.
 
-28 tests passed in the last full run: 10 in `incidents`, 9 in `scheduling`, 5 in `sla`, 4 in
-`e2e`.
+Every claim in the README has a test behind it, including the two that were until recently only
+asserted in prose: a poison pill reaching the dead letter topic without stalling the partition
+behind it, and one publisher stepping over an outbox row another is holding rather than
+queueing behind it.
 
-Every claim in the README now has a test behind it, including the two that were only asserted
-in prose: a poison pill reaching the dead letter topic without stalling the partition behind
-it, and one publisher stepping over an outbox row another is holding rather than queueing
-behind it. 30 tests in the last full run.
+30 tests in the last full run: 11 in `incidents`, 9 in `scheduling`, 5 in `sla`, 5 in `e2e`.
 
 ## Next
 
