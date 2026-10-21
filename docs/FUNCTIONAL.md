@@ -28,9 +28,14 @@ A slot is free, held for one incident, or booked to it. Four technicians are see
 | Carla Otxoa | `DATABASE` |
 | Diego Ferreiro | `HARDWARE` |
 
-Each carries eight hours of free diary, kept topped up as time passes. The first of those hours
-is at least an hour from now — a desk that could send someone within ten minutes is not a desk
-that needs scheduling software.
+Each keeps **eight free hours** ahead of them. As hours are taken, later ones are added, so a
+busy morning extends the diary into the afternoon rather than exhausting it — a desk always has
+next week. The first free hour is at least an hour from now: a desk that could send someone
+within ten minutes is not a desk that needs scheduling software.
+
+Capacity can still run out for a moment. Nine incidents raised in the same few seconds will
+outrun the top-up, which is exactly how a real queue behaves, and the diary recovers within a
+minute.
 
 **Contracts.** What each customer was promised, per urgency: the number of minutes from the
 report until someone turns up.
@@ -100,8 +105,9 @@ The dot at the top reads **live** when the page is connected to the stream of ch
 | Form: `acme`, `CRITICAL`, `NETWORK` | `cancelled`. The same customer that passes at normal priority fails at critical: 30 minutes cannot be met by an hour that is at least an hour away. The contract decides, not the customer. |
 | Form: `globex`, `NORMAL`, `NETWORK` | `assigned`. The mirror of the last one — the customer with the tightest critical terms has eight hours at normal priority. |
 | Form: `initech`, any priority | `cancelled`, saying no contract covers them. Note it is a clear answer, not an error: an unanswerable question still gets an answer. |
-| Raise nine `DATABASE` incidents in a row | The first eight are `assigned`, each to a different hour — only Carla has that skill and she has eight hours. The ninth is `cancelled` for want of a free slot. |
-| Raise several `NETWORK` incidents quickly | Each gets its own hour, and sixteen of them can be satisfied: two technicians, eight hours each. None is double-booked. |
+| Raise nine `DATABASE` incidents within a few seconds | The first eight are `assigned`, each to a different hour — only Carla has that skill and only eight of her hours are free at once. The ninth is `cancelled` for want of a slot, because the burst outran the top-up. |
+| Wait a minute, then raise another `DATABASE` one | `assigned`. The diary extended itself rather than staying full, which is why clicking around the page for ten minutes does not leave everything cancelled. |
+| Raise several `NETWORK` incidents | Each gets its own hour, never a shared one. Two technicians have that skill, so there are more hours to go round. |
 | Open the page in two tabs and raise one in either | Both lists update. The page is showing what the system decided, not what that tab did. |
 | Stop the `scheduling` service (`docker compose stop scheduling`), raise one, start it again | The incident sits at `received` while scheduling is down, then completes once it is back. Nothing is lost; the work was waiting, not dropped. |
 

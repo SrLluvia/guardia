@@ -48,7 +48,7 @@ public class SlotHorizon {
 	 * at once, and two runs that both saw an empty diary each filled it — the duplicate hours
 	 * that {@code slot_one_per_technician_hour} now also makes impossible.
 	 */
-	@Scheduled(fixedDelayString = "${guardia.agenda.top-up-interval:600000}")
+	@Scheduled(fixedDelayString = "${guardia.agenda.top-up-interval:60000}")
 	@Transactional
 	public void topUp() {
 		Instant now = Instant.now(clock);
@@ -61,13 +61,13 @@ public class SlotHorizon {
 		int created = 0;
 
 		for (Technician technician : technicians.findAll()) {
-			long upcoming = slots.countByTechnicianAndStartsAtAfter(technician, now);
+			long free = slots.countByTechnicianAndStatusAndStartsAtAfter(technician, SlotStatus.FREE, now);
 			Instant next = slots.findTopByTechnicianOrderByStartsAtDesc(technician)
 					.map(last -> last.startsAt().plus(SLOT_LENGTH))
 					.filter(candidate -> candidate.isAfter(nextHour))
 					.orElse(nextHour);
 
-			for (long i = upcoming; i < horizonHours; i++) {
+			for (long i = free; i < horizonHours; i++) {
 				slots.save(new Slot(UUID.randomUUID(), technician, next, SLOT_LENGTH));
 				next = next.plus(SLOT_LENGTH);
 				created++;
