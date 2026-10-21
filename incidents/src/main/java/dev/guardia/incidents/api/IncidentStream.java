@@ -37,6 +37,19 @@ public class IncidentStream {
 		emitter.onCompletion(() -> subscribers.remove(emitter));
 		emitter.onTimeout(() -> subscribers.remove(emitter));
 		emitter.onError(e -> subscribers.remove(emitter));
+
+		// A comment, sent immediately and ignored by the client's event handlers, but it
+		// commits the response. Without it nothing reaches the browser until the first state
+		// change, so EventSource never fires `open` and a page with nothing happening on it
+		// cannot tell "connected and quiet" from "not connected".
+		try {
+			emitter.send(SseEmitter.event().comment("connected"));
+		} catch (IOException e) {
+			log.debug("subscriber went away before it was greeted");
+			emitter.completeWithError(e);
+			return emitter;
+		}
+
 		subscribers.add(emitter);
 		return emitter;
 	}
