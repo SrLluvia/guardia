@@ -7,6 +7,8 @@ import dev.guardia.scheduling.domain.Slot;
 import dev.guardia.scheduling.domain.SlotRepository;
 import dev.guardia.scheduling.domain.SlotStatus;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
@@ -29,11 +31,13 @@ import org.springframework.web.client.RestClient;
 class SagaEndToEndTest {
 
 	private static RestClient client;
+	private static RestClient schedulingClient;
 
 	@BeforeAll
 	static void startTheSystem() {
 		GuardiaCluster.start();
 		client = RestClient.create(GuardiaCluster.incidentsBaseUrl());
+		schedulingClient = RestClient.create(GuardiaCluster.schedulingBaseUrl());
 	}
 
 	@Test
@@ -65,9 +69,23 @@ class SagaEndToEndTest {
 				assertThat(status(incidentId)).isEqualTo("CANCELLED"));
 
 		assertThat(detail(incidentId)).contains("response time");
-		// The compensation is the point: scheduling held an hour, and has let it go again.
-		await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
-				assertThat(slots().findByIncidentId(UUID.fromString(incidentId))).isEmpty());
+
+		// The compensation is the point: scheduling held an hour and has let it go again.
+		// Asserted through scheduling's own API rather than its repository, because that is
+		// what anyone looking at the system would see, and a released hour that the service
+		// still reports as taken would be a lie with a correct database underneath it.
+		await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
+			List<Map<String, Object>> diary = diary();
+			assertThat(diary)
+					.as("no hour may still be bound to a cancelled incident")
+					.noneMatch(slot -> incidentId.equals(slot.get("incidentId")));
+
+			Instant releasedHour = Instant.parse((String) view(incidentId).get("scheduledStart"));
+			assertThat(diary)
+					.filteredOn(slot -> Instant.parse((String) slot.get("startsAt")).equals(releasedHour))
+					.as("the hour it had been holding must be on offer again")
+					.anyMatch(slot -> "FREE".equals(slot.get("status")));
+		});
 	}
 
 	@Test
@@ -135,6 +153,11 @@ class SagaEndToEndTest {
 
 	private SlotRepository slots() {
 		return GuardiaCluster.bean("scheduling", SlotRepository.class);
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<Map<String, Object>> diary() {
+		return schedulingClient.get().uri("/api/slots").retrieve().body(List.class);
 	}
 
 	private Slot slotFor(String incidentId) {

@@ -66,6 +66,11 @@ class IncidentSagaTest extends ServiceTest {
 
 		assertThat(status(incident)).isEqualTo(IncidentStatus.ASSIGNED);
 		assertThat(types()).containsExactly(SagaEvents.IncidentCreated.TYPE, SagaEvents.AssignmentConfirmed.TYPE);
+		// Who is going is kept, not only mentioned in passing while the hold was open. This
+		// service cannot ask scheduling for it later without coupling the two.
+		Incident assigned = incidents.findById(incident.id()).orElseThrow();
+		assertThat(assigned.technicianName()).isEqualTo("Ane Mendizabal");
+		assertThat(assigned.resolutionDetail()).contains("Ane Mendizabal");
 	}
 
 	@Test

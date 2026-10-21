@@ -97,6 +97,29 @@
   .ASSIGNED { color: var(--accent); }
   .CANCELLED { color: var(--cancelled); }
   .empty { color: var(--muted); font-size: 14px; }
+
+  /* The diary. Free hours recede, taken ones carry the colour of what took them, which is
+     what makes a hold turning back into a free hour something you can watch happen. */
+  .tech { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; padding: 11px 0; border-top: 1px solid var(--line); }
+  .tech:first-child { border-top: 0; }
+  .who { min-width: 160px; }
+  .who small { display: block; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+  .hours { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hour {
+    font-size: 12px; font-variant-numeric: tabular-nums;
+    padding: 3px 8px; border-radius: 6px;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .hour.HELD { border-color: var(--held); color: var(--held); }
+  .hour.BOOKED { border-color: var(--accent); color: var(--accent); }
+  .hour.released { border-color: var(--cancelled); color: var(--cancelled); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .legend span { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; border: 1px solid currentColor; }
+  .swatch.free { color: var(--line); }
+  .swatch.held { color: var(--held); }
+  .swatch.booked { color: var(--accent); }
+  .swatch.released { color: var(--cancelled); }
   .flash { animation: flash 1.1s ease-out; }
   @keyframes flash { from { background: color-mix(in srgb, var(--accent) 16%, transparent); } to { background: transparent; } }
   @media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
@@ -166,6 +189,23 @@
     <h2>Incidents</h2>
     <ul id="list"><li class="empty">Nothing yet.</li></ul>
   </section>
+
+  <section class="panel">
+    <h2>The diary</h2>
+    <p class="hint">
+      Each technician's next hours. Raise the incident that gets cancelled: its hour is held
+      while the contract is checked and handed straight back, and the diary marks the hour it
+      just gave up. The holding itself lasts well under a second, which is why it is marked
+      rather than left for you to catch.
+    </p>
+    <div class="legend">
+      <span><i class="swatch free"></i>free</span>
+      <span><i class="swatch held"></i>held while the contract is checked</span>
+      <span><i class="swatch booked"></i>booked</span>
+      <span><i class="swatch released"></i>just handed back</span>
+    </div>
+    <div id="diary"><p class="empty">Loading the diary…</p></div>
+  </section>
 </div>
 
 <script>
@@ -200,7 +240,8 @@
     list.innerHTML = rows.map(incident => {
       const when = hour(incident.scheduledStart);
       const parts = [incident.customerId, incident.priority.toLowerCase(), incident.requiredSkill.toLowerCase()];
-      if (when) parts.push("slot " + when);
+      if (incident.technicianName) parts.push(incident.technicianName);
+      if (when) parts.push(when);
       return `<li class="${incident.id === changedId ? "flash" : ""}">
           <div class="row">
             <span class="summary"></span>
@@ -219,9 +260,31 @@
     });
   }
 
+  // An hour handed back by a cancellation, remembered briefly so the diary can point at it.
+  // The hold itself lasts a fraction of a second — too short to catch by refreshing — but
+  // the hour it freed is worth seeing, since giving it back is the whole argument.
+  const RELEASED_FOR = 10000;
+  const justReleased = new Map();
+
   function put(incident, flash) {
+    const previous = incidents.get(incident.id);
     incidents.set(incident.id, incident);
+    if (incident.status === "CANCELLED" && incident.scheduledStart
+        && (!previous || previous.status !== "CANCELLED")) {
+      justReleased.set(incident.technicianId + "@" + Date.parse(incident.scheduledStart), Date.now());
+    }
     render(flash ? incident.id : null);
+  }
+
+  function wasJustReleased(slot) {
+    const key = slot.technicianId + "@" + Date.parse(slot.startsAt);
+    const at = justReleased.get(key);
+    if (at === undefined) return false;
+    if (Date.now() - at > RELEASED_FOR) {
+      justReleased.delete(key);
+      return false;
+    }
+    return true;
   }
 
   async function load() {
@@ -287,7 +350,62 @@
     });
   });
 
+  // --- the diary ---------------------------------------------------------------------
+  // Polled, not streamed. The incidents list is on a stream because a viewer is waiting for
+  // one particular change and wants it the moment it lands; the diary is a picture of a
+  // whole day, and refreshing it under a second is simpler to build and to explain.
+  // It comes from the scheduling service, which owns the hours and is on its own port.
+  const SCHEDULING = location.protocol + "//" + location.hostname + ":8082";
+  const diary = document.getElementById("diary");
+
+  function renderDiary(slots) {
+    if (slots.length === 0) {
+      diary.innerHTML = '<p class="empty">No hours in the diary.</p>';
+      return;
+    }
+    const byTechnician = new Map();
+    for (const slot of slots) {
+      if (!byTechnician.has(slot.technicianId)) byTechnician.set(slot.technicianId, []);
+      byTechnician.get(slot.technicianId).push(slot);
+    }
+
+    diary.innerHTML = [...byTechnician.values()].map(hours => {
+      const technician = hours[0];
+      // Just the time on the chip, since a row is one technician's run of consecutive hours;
+      // the full day is on hover, for the hours that spill into tomorrow.
+      const cells = hours.map(slot => {
+        const at = new Date(slot.startsAt);
+        const clock = at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const released = slot.status === "FREE" && wasJustReleased(slot);
+        const what = released ? "just handed back" : slot.status.toLowerCase();
+        return `<span class="hour ${slot.status}${released ? " released" : ""}" title="${hour(slot.startsAt)} — ${what}">${clock}</span>`;
+      }).join("");
+      return `<div class="tech">
+          <div class="who"><span class="name"></span><small>${technician.skill.toLowerCase()}</small></div>
+          <div class="hours">${cells}</div>
+        </div>`;
+    }).join("");
+
+    [...byTechnician.values()].forEach((hours, index) => {
+      diary.children[index].querySelector(".name").textContent = hours[0].technicianName;
+    });
+  }
+
+  async function pollDiary() {
+    // A hidden tab is not being watched, so it has no business polling anything.
+    if (!document.hidden) {
+      try {
+        const response = await fetch(SCHEDULING + "/api/slots");
+        if (response.ok) renderDiary(await response.json());
+      } catch {
+        diary.innerHTML = '<p class="empty">The scheduling service is not answering.</p>';
+      }
+    }
+    setTimeout(pollDiary, 800);
+  }
+
   load().then(listen);
+  pollDiary();
 </script>
 </body>
 </html>

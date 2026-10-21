@@ -61,7 +61,15 @@ final class GuardiaCluster {
 	}
 
 	static String incidentsBaseUrl() {
-		return "http://localhost:" + incidents.getEnvironment().getRequiredProperty("local.server.port");
+		return baseUrlOf(incidents);
+	}
+
+	static String schedulingBaseUrl() {
+		return baseUrlOf(scheduling);
+	}
+
+	private static String baseUrlOf(ConfigurableApplicationContext context) {
+		return "http://localhost:" + context.getEnvironment().getRequiredProperty("local.server.port");
 	}
 
 	static <T> T bean(String service, Class<T> type) {

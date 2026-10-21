@@ -94,13 +94,24 @@ do not reload it, and the states appear as they are decided.
 
 The dot at the top reads **live** when the page is connected to the stream of changes.
 
+Underneath, **the diary** shows each technician's next hours: pale for free, amber while an
+hour is held, green once booked. An hour that a cancellation has just handed back is marked in
+red for ten seconds. That marking exists because the holding itself lasts well under a second —
+too brief to catch by looking — while the hour it freed is the thing worth seeing.
+
+An assigned incident names the technician who is going. That name travelled with the event
+that said an hour was held: this service cannot ask the scheduling service for it afterwards
+without the two becoming one deployable.
+
 ### Things to try, and what should happen
 
 | What to do | What you should see |
 |---|---|
 | Click **Gets assigned** (`acme`, `NORMAL`, `NETWORK`) | Appears as `received`, then within a second or two `assigned`, with the hour shown. `acme` has 24 hours at normal priority and the next free hour is well inside that. |
 | Click **Gets cancelled** (`globex`, `CRITICAL`, `NETWORK`) | Briefly `received`, then `cancelled`, saying how many minutes past the 15-minute promise the earliest hour falls. An hour was held and given back in between — too quickly to see, but the next test proves it. |
-| Click **Gets cancelled**, then **Gets assigned** | The assigned incident takes the very hour the cancelled one had held. That is the undo working: a rejection must not cost the desk an hour of capacity. |
+| Click **Gets cancelled**, then **Gets assigned** | The assigned incident is given that same time. Two technicians have the `NETWORK` skill, so it may be either one's hour — what matters is that the capacity came back rather than being lost to a rejected incident. For the stricter version, do it with `DATABASE`, where only Carla has the skill and it must therefore be the very same slot. |
+| Click **Gets cancelled** and watch the diary | One hour turns red — *just handed back* — on the technician who had been holding it, and only on that one. Ten seconds later it is an ordinary free hour again. |
+| Click **Gets assigned** and watch the diary | An hour turns green on one technician, and the incident above says who is going. |
 | Click **No technician has the skill** (`QUANTUM`) | `cancelled` almost immediately, naming the skill. Nothing was held, because nothing could be. |
 | Form: `acme`, `CRITICAL`, `NETWORK` | `cancelled`. The same customer that passes at normal priority fails at critical: 30 minutes cannot be met by an hour that is at least an hour away. The contract decides, not the customer. |
 | Form: `globex`, `NORMAL`, `NETWORK` | `assigned`. The mirror of the last one — the customer with the tightest critical terms has eight hours at normal priority. |

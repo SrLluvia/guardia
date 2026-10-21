@@ -37,6 +37,9 @@ public class Incident {
 	@Column(name = "technician_id")
 	private UUID technicianId;
 
+	@Column(name = "technician_name")
+	private String technicianName;
+
 	@Column(name = "slot_id")
 	private UUID slotId;
 
@@ -72,6 +75,7 @@ public class Incident {
 
 	public void holdTaken(UUID technicianId, UUID slotId, Instant scheduledStart, String technicianName, Instant now) {
 		this.technicianId = technicianId;
+		this.technicianName = technicianName;
 		this.slotId = slotId;
 		this.scheduledStart = scheduledStart;
 		this.resolutionDetail = "Slot held with " + technicianName + ", awaiting SLA check";
@@ -79,7 +83,7 @@ public class Incident {
 	}
 
 	public void assigned(Instant now) {
-		this.resolutionDetail = "Assigned, within the contracted response time";
+		this.resolutionDetail = "Assigned to " + technicianName + ", within the contracted response time";
 		moveTo(IncidentStatus.ASSIGNED, now);
 	}
 
@@ -119,6 +123,10 @@ public class Incident {
 
 	public UUID technicianId() {
 		return technicianId;
+	}
+
+	public String technicianName() {
+		return technicianName;
 	}
 
 	public UUID slotId() {

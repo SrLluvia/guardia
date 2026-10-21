@@ -23,6 +23,9 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
 
 	Optional<Slot> findByIncidentId(UUID incidentId);
 
+	/** The diary from now on, for anyone who wants to look at it. */
+	List<Slot> findByStartsAtAfterOrderByStartsAtAsc(Instant after, Limit limit);
+
 	@Query("""
 			select s from Slot s
 			where s.status = dev.guardia.scheduling.domain.SlotStatus.HELD
