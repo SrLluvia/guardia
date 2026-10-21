@@ -5,8 +5,8 @@ is held for it, the customer's contracted response time is checked, and the appo
 either confirmed or given back. Three services, no shared database, and no transaction that
 spans them.
 
-> Status: the saga runs end to end — holding, confirming, compensating and timing out — with
-> tests that provoke each of those rather than describe them. The browser page is next.
+> The saga runs end to end — holding, confirming, compensating and timing out — and every
+> claim below is held up by a test that forces the failure rather than describing it.
 
 ## The problem worth solving
 
@@ -95,6 +95,8 @@ The interesting tests do not assert that the happy path works. They break things
 | A verdict arrives after a timeout | It is ignored; a finished saga does not move |
 | Two incidents want the same skill | They get different hours |
 | An incident nobody has heard of | The event is dropped and nothing is written |
+| A record that can never be read | It reaches `<topic>.DLT`, and an incident raised afterwards still completes |
+| One publisher holding an outbox row | A second steps over it rather than queueing behind it |
 
 The end-to-end suite starts all three services in one JVM against a real Kafka and a real
 Postgres, posts an incident through the public API, and waits for the three of them to talk to

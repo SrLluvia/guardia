@@ -18,21 +18,25 @@ day is held, the SLA is checked, and the appointment is either booked or the hou
 28 tests passed in the last full run: 10 in `incidents`, 9 in `scheduling`, 5 in `sla`, 4 in
 `e2e`.
 
-## In flight
-
-`DeadLetterEndToEndTest` was written but has not been run locally. It publishes an unreadable
-record to `incident-events` and asserts two things: the record reaches `incident-events.DLT`,
-and an incident raised afterwards still completes — the claim that one poison pill cannot stop
-a partition. CI on the pull request is what will confirm it.
+Every claim in the README now has a test behind it, including the two that were only asserted
+in prose: a poison pill reaching the dead letter topic without stalling the partition behind
+it, and one publisher stepping over an outbox row another is holding rather than queueing
+behind it. 30 tests in the last full run.
 
 ## Next
 
-1. Confirm the dead letter test passes, then merge the pull request.
-2. The first two commits carry a `Co-Authored-By` trailer that should not be there. Removing it
-   needs a history rewrite and a force push; one of those commits is already on `main`.
-3. Worth having, in rough order of value: a test that two publishers cannot send the same
-   outbox row twice (`FOR UPDATE SKIP LOCKED` is claimed but not demonstrated), Dockerfiles so
-   each service is deployable on its own, and an `/actuator/health` check in `compose.yaml`.
+1. Merge the pull request — but only after the history below has been pushed, or the trailer
+   ends up in `main` for good.
+2. The history has been rewritten locally to drop the `Co-Authored-By` trailer from the first
+   two commits. It needs two force pushes, which the permission mode in this setup blocks:
+
+   ```
+   git push --force origin feat/saga-foundation
+   git push --force origin $(git rev-list --max-parents=0 feat/saga-foundation):refs/heads/main
+   ```
+
+3. Worth having: Dockerfiles so each service is deployable on its own, an `/actuator/health`
+   check in `compose.yaml`, and rescheduling an incident whose first attempt was cancelled.
 
 ## Things learned the hard way, so they are not learned twice
 
